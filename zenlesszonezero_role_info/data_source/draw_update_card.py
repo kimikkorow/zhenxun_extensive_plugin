@@ -5,6 +5,12 @@ from ..utils.image_utils import draw_center_text, get_img, image_build, load_ima
 from .draw_role_card import resource_url, role_avatar_url
 
 
+def _get_role_avatar_url(role_name: str, role_data: dict) -> str:
+    return role_avatar_url.get(role_name) or resource_url.format(
+        role_data["立绘"].lstrip("/")
+    )
+
+
 async def draw_role_pic(uid: str, role_dict: dict | list, player_info):
     """
     绘制更新图片
@@ -57,8 +63,11 @@ async def draw_role_pic(uid: str, role_dict: dict | list, player_info):
 
         # 角色图
         role_bg = f"{avatar_path}/{data['名称']}.png"
-        if role_avatar_url.get(data["名称"],"") != "":
-            role_bg = await get_img(url=role_avatar_url.get(data["名称"]), save_path=role_bg, mode="RGBA")
+        role_bg = await get_img(
+            url=_get_role_avatar_url(data["名称"], data),
+            save_path=role_bg,
+            mode="RGBA",
+        )
 
         card_bg.alpha_composite(role_bg.resize((card_size[0], card_size[0]), Image.Resampling.LANCZOS), (0, 38 * multiple if top_name else 0))
 
