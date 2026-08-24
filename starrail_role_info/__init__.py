@@ -11,11 +11,13 @@ import httpx
 import nonebot
 from nonebot import Driver, on_command, on_regex
 from nonebot.adapters.onebot.v11 import (
+    Bot,
     GroupMessageEvent,
     Message,
     MessageEvent,
     MessageSegment,
 )
+from nonebot.adapters.onebot.v11.permission import GROUP
 from nonebot.params import CommandArg, RegexGroup
 from nonebot.permission import SUPERUSER
 
@@ -29,8 +31,10 @@ from zhenxun.utils.enum import PluginType
 
 from ..plugin_utils.auth_utils import gold_cost
 from .data_source.draw_artifact_card import draw_artifact_card
+from .data_source.damage_cal import get_role_dmg
 from .data_source.draw_recommend_card import gen_artifact_recommend
 from .data_source.draw_role_card import draw_role_card
+from .data_source.draw_role_rank_card import draw_role_rank_card
 from .data_source.draw_update_card import draw_role_pic
 from .utils.card_utils import (
     PlayerInfo,
@@ -44,6 +48,7 @@ from .utils.card_utils import (
 )
 from .utils.image_utils import image_build, load_image
 from .utils.json_utils import get_message_at
+from .utils.rank_utils import collect_role_rank_entries
 
 __plugin_meta__ = PluginMetadata(
     name="星铁角色面板",
@@ -60,12 +65,14 @@ __plugin_meta__ = PluginMetadata(
         他的星铁角色@XXX
         最强XX (例:最强希儿)
         最菜XX
+        XX评分排行 (例:希儿评分排行)
+        XX伤害排行序号 (例:希儿伤害排行3)
         遗器榜单
         群遗器榜单
     """.strip(),
     extra=PluginExtraData(
         author="CRAZYSHIMAKAZE",
-        version="1.3.8",
+        version="1.3.9",
         plugin_type=PluginType.NORMAL,
     ).to_dict(),
 )
@@ -86,6 +93,7 @@ driver: Driver = nonebot.get_driver()
 get_card = on_regex(r"(.*)面板(.*)", priority=4, block=False)
 group_best = on_regex(r"^(最强|群最强)(.*)", priority=4)
 group_worst = on_regex(r"^(最菜|群最菜)(.*)", priority=4)
+role_rank = on_regex(r"^(.+?)(评分|伤害)(?:排行|榜单)(\d*)$", permission=GROUP, priority=4, block=True)
 
 artifact_recommend = on_regex("(.*?)([头手身脚球绳])推荐", priority=4)
 artifact_list = on_command("遗器榜单", aliases={"遗器排行"}, priority=4, block=True)
@@ -440,6 +448,71 @@ async def _(event: GroupMessageEvent, args: tuple[str, ...] = RegexGroup()):
         )
 
 
+@role_rank.handle()
+@gold_cost(coin=1, percent=1)
+async def _(
+    bot: Bot,
+    event: GroupMessageEvent,
+    args: tuple[str, ...] = RegexGroup(),
+):
+    role_name = get_role_name(args[0].strip())
+    metric = args[1]
+    damage_index_text = args[2]
+    if not role_name:
+        return await role_rank.finish()
+    if metric == "伤害" and (
+        not damage_index_text or int(damage_index_text) < 1
+    ):
+        return await role_rank.finish(
+            f"请指定{role_name}伤害面板中的项目序号，例如："
+            f"{role_name}伤害排行3",
+            at_sender=False,
+        )
+    if metric == "评分" and damage_index_text:
+        return await role_rank.finish(
+            f"评分排行不需要项目序号，请发送：{role_name}评分排行",
+            at_sender=False,
+        )
+    damage_index = int(damage_index_text) if damage_index_text else None
+    try:
+        members = await bot.get_group_member_list(group_id=event.group_id)
+    except Exception:
+        return await role_rank.finish("获取群成员列表失败，请稍后重试。", at_sender=False)
+    try:
+        uid_map = load_json(f"{player_info_path}/qq2uid.json")
+    except (OSError, TypeError, ValueError):
+        uid_map = {}
+    entries = collect_role_rank_entries(
+        members,
+        uid_map,
+        player_info_path,
+        role_name,
+        metric,
+        damage_calculator=get_role_dmg,
+        damage_index=damage_index,
+    )
+    if not entries:
+        if metric == "伤害":
+            return await role_rank.finish(
+                f"本群暂无可用于{role_name}第{damage_index}个伤害项目的排行数据，"
+                "请确认序号未超出伤害面板范围，并让群成员更新星铁面板。",
+                at_sender=False,
+            )
+        return await role_rank.finish(
+            f"本群暂无可用于{role_name}{metric}排行的数据，请群成员先绑定 UID 并更新星铁面板。",
+            at_sender=False,
+        )
+    image = await draw_role_rank_card(
+        f"{role_name}{metric}排行{damage_index or ''}",
+        role_name,
+        event.group_id,
+        entries,
+        __plugin_version__,
+        metric,
+    )
+    await role_rank.send(image_build(image, quality=100), at_sender=False)
+
+
 @reset_best.handle()
 async def _(event: GroupMessageEvent, arg: Message = CommandArg()):
     role = arg.extract_plain_text().strip()
@@ -596,41 +669,40 @@ async def get_update_info():
     return version.group(1).strip()
 
 
-@check_update.handle()
-async def _check_update():
+async def _get_update_message():
     url = "https://raw.githubusercontent.com/CRAZYShimakaze/zhenxun_extensive_plugin/main/starrail_role_info/__init__.py"
-    bot = nonebot.get_bot()
     try:
         version = await client.get(url, follow_redirects=True)
         version = re.search(r'version="(\d+\.\d+\.\d+)"', str(version.text))
     except Exception as e:
         print(f"{__zx_plugin_name__}插件检查更新失败，请检查github连接性是否良好!: {e}")
-        return
+        return None
+    update_info = await get_update_info()
     if version.group(1) != __plugin_version__:
-        update_info = await get_update_info()
-        try:
-            await check_update.send(
-                f"检测到{__zx_plugin_name__}插件有更新(当前V{__plugin_version__},最新V{version.group(1)})！请前往github下载！\n本次更新内容如下:\n{update_info}"
-            )
-        except Exception:
-            for admin in bot.config.superusers:
-                await bot.send_private_msg(
-                    user_id=int(admin),
-                    message=f"检测到{__zx_plugin_name__}插件有更新(当前V{__plugin_version__},最新V{version.group(1)})！请前往github下载！\n本次更新内容如下:\n{update_info}",
-                )
-            print(f"检测到{__zx_plugin_name__}插件有更新！请前往github下载！")
-    else:
-        update_info = await get_update_info()
-        try:
-            await check_update.send(f"{__zx_plugin_name__}插件已经是最新V{__plugin_version__}！最近一次的更新内容如下:\n{update_info}")
-        except Exception:
-            pass
+        return f"检测到{__zx_plugin_name__}插件有更新(当前V{__plugin_version__},最新V{version.group(1)})！请前往github下载！\n本次更新内容如下:\n{update_info}"
+    return f"{__zx_plugin_name__}插件已经是最新V{__plugin_version__}！最近一次的更新内容如下:\n{update_info}"
+
+
+async def _notify_update_to_superusers():
+    message = await _get_update_message()
+    if not message:
+        return
+    bot = nonebot.get_bot()
+    for admin in bot.config.superusers:
+        await bot.send_private_msg(user_id=int(admin), message=message)
+
+
+@check_update.handle()
+async def _check_update():
+    message = await _get_update_message()
+    if message:
+        await check_update.send(message)
 
 
 @driver.on_startup
 async def _():
     scheduler.add_job(
-        _check_update,
+        _notify_update_to_superusers,
         "cron",
         hour=random.randint(9, 22),
         minute=random.randint(0, 59),

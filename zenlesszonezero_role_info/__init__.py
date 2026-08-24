@@ -11,12 +11,13 @@ import httpx
 import nonebot
 from nonebot import Driver, on_command, on_message, on_regex
 from nonebot.adapters.onebot.v11 import (
+    Bot,
     GroupMessageEvent,
     Message,
     MessageEvent,
     MessageSegment,
 )
-from nonebot.adapters.onebot.v11.permission import PRIVATE
+from nonebot.adapters.onebot.v11.permission import GROUP, PRIVATE
 from nonebot.params import CommandArg, RegexGroup
 from nonebot.permission import SUPERUSER
 from nonebot.plugin import PluginMetadata
@@ -30,6 +31,7 @@ from zhenxun.utils.exception import AllURIsFailedError
 from ..plugin_utils.auth_utils import gold_cost
 from .data_source.draw_artifact_card import draw_artifact_card
 from .data_source.draw_recommend_card import gen_artifact_recommend
+from .data_source.draw_role_rank_card import draw_role_rank_card
 from .data_source.draw_role_card import draw_role_card, pos_name
 from .data_source.draw_update_card import draw_role_pic
 from .utils.card_utils import (
@@ -44,6 +46,7 @@ from .utils.card_utils import (
 )
 from .utils.image_utils import image_build, load_image
 from .utils.json_utils import get_message_at
+from .utils.rank_utils import collect_role_rank_entries
 
 __plugin_meta__ = PluginMetadata(
     name="绝区零角色面板",
@@ -56,6 +59,7 @@ __plugin_meta__ = PluginMetadata(
         XX面板 (例:星见雅面板、星见雅面板@CRAZYShimakaze、星见雅面板104442596)
         更新/刷新绝区零面板 (uid)
         绝区零角色排行
+        XX评分排行 (例:星见雅评分排行)
         最强XX (例:最强星见雅)
         最菜XX
         驱动盘榜单
@@ -65,7 +69,7 @@ __plugin_meta__ = PluginMetadata(
     """.strip(),
     extra=PluginExtraData(
         author="CRAZYSHIMAKAZE",
-        version="0.2.5",
+        version="0.2.6",
         plugin_type=PluginType.NORMAL,
     ).to_dict(),
 )
@@ -88,6 +92,7 @@ driver: Driver = nonebot.get_driver()
 get_card = on_regex(r"(.*)面板(.*)", priority=4, block=False)
 group_best = on_regex(r"^(最强|群最强)(.*)", priority=4)
 group_worst = on_regex(r"^(最菜|群最菜)(.*)", priority=4)
+role_rank = on_regex(r"^(.+?)评分(?:排行|榜单)$", permission=GROUP, priority=4, block=True)
 artifact_adapt = on_regex("(.*?)([123456])适配", priority=4)
 artifact_recommend = on_regex("(.*?)([123456套])推荐", priority=4)
 artifact_list = on_command("驱动盘榜单", aliases={"驱动盘排行"}, priority=4, block=True)
@@ -584,6 +589,47 @@ async def _(event: MessageEvent, arg: Message = CommandArg()):
     await get_char(uid, event)
 
 
+@role_rank.handle()
+@gold_cost(coin=1, percent=1)
+async def _(
+    bot: Bot,
+    event: GroupMessageEvent,
+    args: tuple[str, ...] = RegexGroup(),
+):
+    role_name = get_role_name(args[0].strip())
+    if not role_name:
+        return await role_rank.finish()
+    try:
+        members = await bot.get_group_member_list(group_id=event.group_id)
+    except Exception:
+        return await role_rank.finish("获取群成员列表失败，请稍后重试。", at_sender=False)
+
+    try:
+        uid_map = load_json(f"{player_info_path}/qq2uid.json")
+    except (OSError, UnicodeError, ValueError):
+        uid_map = {}
+    entries = collect_role_rank_entries(
+        members or [],
+        uid_map,
+        player_info_path,
+        role_name,
+    )
+    if not entries:
+        return await role_rank.finish(
+            f"本群暂无可用于{role_name}评分排行的数据，请群成员先绑定 UID 并更新绝区零面板。",
+            at_sender=False,
+        )
+
+    image = await draw_role_rank_card(
+        f"{role_name}评分排行",
+        role_name,
+        event.group_id,
+        entries,
+        __plugin_version__,
+    )
+    await role_rank.send(image_build(image, quality=100), at_sender=False)
+
+
 async def get_char(uid, event):
     url = enka_url.format(uid)
     if not os.path.exists(f"{player_info_path}/{uid}.json"):
@@ -748,10 +794,8 @@ async def get_update_info():
     return version.group(1).strip()
 
 
-@check_update.handle()
-async def _check_update():
+async def _get_update_message():
     url = "https://raw.githubusercontent.com/CRAZYShimakaze/zhenxun_extensive_plugin/main/zenlesszonezero_role_info/__init__.py"
-    bot = nonebot.get_bot()
     try:
         version = await client.get(url, follow_redirects=True)
         version = re.search(
@@ -760,36 +804,37 @@ async def _check_update():
         )
     except Exception as e:
         print(f"{__zx_plugin_name__}插件检查更新失败，请检查github连接性是否良好!: {e}")
-        return
+        return None
     if not version:
         print(f"{__zx_plugin_name__}插件检查更新失败，远端版本号格式无效")
-        return
+        return None
     latest_version = version.group(1)
+    update_info = await get_update_info()
     if _version_key(latest_version) > _version_key(__plugin_version__):
-        update_info = await get_update_info()
-        try:
-            await check_update.send(
-                f"检测到{__zx_plugin_name__}插件有更新(当前V{__plugin_version__},最新V{latest_version})！请前往github下载！\n本次更新内容如下:\n{update_info}"
-            )
-        except Exception:
-            for admin in bot.config.superusers:
-                await bot.send_private_msg(
-                    user_id=int(admin),
-                    message=f"检测到{__zx_plugin_name__}插件有更新(当前V{__plugin_version__},最新V{latest_version})！请前往github下载！\n本次更新内容如下:\n{update_info}",
-                )
-            print(f"检测到{__zx_plugin_name__}插件有更新！请前往github下载！")
-    else:
-        update_info = await get_update_info()
-        try:
-            await check_update.send(f"{__zx_plugin_name__}插件已经是最新V{__plugin_version__}！最近一次的更新内容如下:\n{update_info}")
-        except Exception:
-            pass
+        return f"检测到{__zx_plugin_name__}插件有更新(当前V{__plugin_version__},最新V{latest_version})！请前往github下载！\n本次更新内容如下:\n{update_info}"
+    return f"{__zx_plugin_name__}插件已经是最新V{__plugin_version__}！最近一次的更新内容如下:\n{update_info}"
+
+
+async def _notify_update_to_superusers():
+    message = await _get_update_message()
+    if not message:
+        return
+    bot = nonebot.get_bot()
+    for admin in bot.config.superusers:
+        await bot.send_private_msg(user_id=int(admin), message=message)
+
+
+@check_update.handle()
+async def _check_update():
+    message = await _get_update_message()
+    if message:
+        await check_update.send(message)
 
 
 @driver.on_startup
 async def _():
     scheduler.add_job(
-        _check_update,
+        _notify_update_to_superusers,
         "cron",
         hour=random.randint(9, 22),
         minute=random.randint(0, 59),

@@ -28,6 +28,8 @@ from ..utils.image_utils import draw_center_text, draw_right_text, get_img, load
 from .damage_cal import get_role_dmg
 from ..utils.json_utils import load_json
 
+BIG_GRADUATION_RANKS = {"ACE", "ACE*"}
+
 resource_url = "https://enka.network/{}"
 skill_list = load_json(f"{json_path}/skill_list.json")
 special_list = load_json(f"{json_path}/special_list.json")
@@ -459,7 +461,7 @@ async def draw_role_card(uid, data, player_info, plugin_version, only_cal):
             continue
         artifact_score, grade = get_artifact_score(effective, artifact, data, i)
         # artifact_score = grade = mark = 0
-        player_info.data["大毕业驱动盘"] = player_info.data["大毕业驱动盘"] + 1 if artifact_score == "ACE" else player_info.data["大毕业驱动盘"]
+        player_info.data["大毕业驱动盘"] = player_info.data["大毕业驱动盘"] + 1 if artifact_score in BIG_GRADUATION_RANKS else player_info.data["大毕业驱动盘"]
         player_info.data["小毕业驱动盘"] = player_info.data["小毕业驱动盘"] + 1 if artifact_score == "SSS" else player_info.data["小毕业驱动盘"]
 
         artifact_pk_info["星级"] = artifact["星级"]
