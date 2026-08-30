@@ -86,3 +86,26 @@ def test_buff_source_and_effect_split_on_chinese_or_ascii_colon() -> None:
         "Damage increased",
     )
     assert render._split_buff("无说明") == ("无说明", "")
+
+
+def test_text_damage_rows_use_character_font_and_span_value_columns(monkeypatch) -> None:
+    render = _load_render_module()
+    centered: list[tuple[str, str]] = []
+    original_center_text = render._center_text
+
+    def record_center_text(draw, text, left, right, top, fill, font):
+        centered.append((str(text), str(getattr(font, "path", ""))))
+        original_center_text(draw, text, left, right, top, fill, font)
+
+    monkeypatch.setattr(render, "_center_text", record_center_text)
+    render.draw_dmg_pic(
+        {
+            "【声明】": ("本计算中无【军功】buff",),
+            "普攻伤害": ("123", "456"),
+        }
+    )
+
+    text_font = next(path for text, path in centered if text.startswith("本计算"))
+    assert text_font.endswith("hywh.ttf")
+    assert render._is_text_value(("本计算中无【军功】buff",))
+    assert not render._is_text_value(("123",))

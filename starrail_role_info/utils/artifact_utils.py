@@ -29,6 +29,43 @@ main_max_value = [
 ]
 integer_property = ["生命值", "攻击力", "防御力", "速度"]
 small_property = ["生命值", "攻击力", "防御力"]
+upgrade_count_marks = {1: "¹", 2: "²", 3: "³", 4: "⁴", 5: "⁵"}
+
+
+def get_upgrade_count_mark(count):
+    return upgrade_count_marks.get(count, "")
+
+
+def get_relic_upgrade_count(artifact, sub):
+    """接口 cnt 包含初始词条，界面强化次数需减去初始的 1 次。"""
+    try:
+        count = int(sub.get("强化次数", 0))
+    except (TypeError, ValueError):
+        count = 0
+    if count > 0:
+        return max(0, count - 1)
+
+    try:
+        affixes = relic_sub_value[relic[artifact["ID"]]["sub_affix_id"]]["affixes"]
+        affix = next(
+            item
+            for item in affixes.values()
+            if trans_data["property"][item["property"]] == sub["属性名"]
+        )
+        value = sub["属性值"]
+        candidates = (
+            (
+                abs(value - (affix["base"] * roll_count + affix["step"] * step_count)),
+                roll_count,
+            )
+            for roll_count in range(1, 7)
+            for step_count in range(roll_count * affix.get("step_num", 2) + 1)
+        )
+        return max(0, min(candidates)[1] - 1)
+    except (KeyError, StopIteration, TypeError, ValueError):
+        value = sub.get("属性值", 0)
+        max_value = sub_grow_max_value.get(sub.get("属性名"))
+        return max(0, round(value / max_value) - 1) if max_value else 0
 
 
 def get_full_times(effective, artifact, pos_idx):
@@ -117,17 +154,14 @@ def get_artifact_score(effective, artifact, role_info, pos_idx):
     #
     # all_score = sum(sub_score) + main_score
     # 圣遗物强化次数
-    prop = relic_sub_value[relic[artifact["ID"]]["sub_affix_id"]]["affixes"]
-    grow_value = {}
-    for item in prop.values():
-        item_prop = {trans_data["property"][item["property"]]: item["base"]}
-        grow_value.update(item_prop)
     mark = []
+    upgrade_counts = []
     for index, s in enumerate(artifact["词条"]):
         # print(s["属性值"], s["属性名"])
         va = s["属性值"]
         # mark.append(s["属性值"] / grow_value[s["属性名"]] - 1)
         mark.append(max(0, va / sub_grow_max_value[s["属性名"]] - 1))
+        upgrade_counts.append(get_relic_upgrade_count(artifact, s))
 
     # 最终圣遗物评级
     times = get_full_times(effective, artifact, pos_idx)
@@ -169,8 +203,7 @@ def get_artifact_score(effective, artifact, role_info, pos_idx):
         if all_score > 6
         else "D"
     )
-    mark = list(map(round, mark))
-    return calc_rank_str, all_score, mark
+    return calc_rank_str, all_score, upgrade_counts
 
 
 def get_effective(data):

@@ -20,6 +20,13 @@ MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 
+class _TextValues(tuple):
+    def __new__(cls, values):
+        instance = super().__new__(cls, values)
+        instance.is_text = True
+        return instance
+
+
 def role_data(score: float, *, rank: int = 3) -> dict:
     return {
         "评分": score,
@@ -136,6 +143,12 @@ def test_select_damage_metric_uses_one_based_rows_and_excludes_notes() -> None:
     assert MODULE.select_damage_metric(damage, 2) == ("战技", 54321.0, None)
     assert MODULE.select_damage_metric(damage, 3) is None
     assert MODULE.select_damage_metric(damage, 0) is None
+
+
+def test_select_damage_metric_ignores_marked_text_rows() -> None:
+    damage = {"说明": _TextValues(("11.7%",))}
+
+    assert MODULE.select_damage_metric(damage, 1) is None
 
 
 def test_collect_damage_rank_uses_requested_expected_damage(tmp_path: Path) -> None:

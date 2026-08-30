@@ -138,6 +138,31 @@ def test_promotion_restores_main_trace_buffs_and_renderer_notes(damage_modules) 
     assert any("死水深潜的先驱" in item for item in rendered["额外说明"])
 
 
+def test_cerydra_text_results_and_talent_table_alias(damage_modules) -> None:
+    damage, runtime = damage_modules
+    profile = _cached_profile("101245175", "刻律德菈")
+
+    result = runtime.calculate_rule_snapshot("刻律德菈", profile)
+    assert result["damage"]["【声明】"] == ["本计算中,刻律德菈无【军功】buff"]
+    assert getattr(result["damage"]["【声明】"], "is_text", False)
+    assert result["damage"]["【军功】角色攻击力提升"] == ["636点"]
+    assert getattr(result["damage"]["【军功】角色攻击力提升"], "is_text", False)
+
+    rendered = damage.get_role_dmg(profile)
+    assert rendered is not None
+    assert getattr(rendered["【声明】"], "is_text", False)
+    assert rendered["【军功】角色攻击力提升"] == ["636点"]
+
+
+def test_saber_talent_table_alias_applies_damage_buff(damage_modules) -> None:
+    _, runtime = damage_modules
+    profile = _cached_profile("100051625", "Saber")
+    character = runtime.load_rule_snapshot()["characters"]["Saber"]["data"]
+    context = runtime._build_context("Saber", profile, character)
+
+    assert context.talent("t", "伤害提高") == pytest.approx(0.6)
+
+
 def test_attr_percentages_are_visible_but_excluded_from_direct_damage(damage_modules) -> None:
     _, runtime = damage_modules
     profile = _cached_profile("100064476", "不死途")

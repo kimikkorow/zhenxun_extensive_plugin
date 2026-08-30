@@ -147,15 +147,6 @@ async def draw_role_rank_card(
                 font_name="number.ttf",
             ),
         )
-        draw_center_text(
-            draw,
-            "音擎",
-            x + 200,
-            x + 300,
-            y + 47,
-            "#dfdfdf",
-            _fit_font(draw, "音擎", 100, 18, minimum=12),
-        )
 
         weapon = entry.get("weapon")
         if not isinstance(weapon, dict):

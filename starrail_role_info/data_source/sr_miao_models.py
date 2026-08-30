@@ -1,7 +1,26 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
+
+
+class DamageValues(list):
+    """Rendered values with the Miao result type preserved for the card UI."""
+
+    def __init__(self, values: Iterable[str] = (), *, is_text: bool = False):
+        super().__init__(values)
+        self.is_text = is_text
+
+
+# A few pinned snapshots contain older table labels than their calc.js rules.
+_TALENT_TABLE_ALIASES = {
+    "Saber": {
+        ("t", "伤害提高"): ("造成的伤害提高",),
+    },
+    "刻律德菈": {
+        ("t", "攻击力提高上限"): ("攻击力",),
+    },
+}
 
 
 @dataclass
@@ -169,7 +188,7 @@ class DamageResult:
 
     def display(self) -> tuple[str, ...]:
         if self.text is not None:
-            return (self.text,)
+            return DamageValues((self.text,), is_text=True)
         if self.crit is None:
             return (str(int(self.avg)),)
         return str(int(self.avg)), str(int(self.crit))
@@ -211,6 +230,14 @@ class DamageContext:
 
     def talent(self, kind: str, name: str) -> Any:
         values = self.talent_data.get(kind, {}).get(name)
+        if not isinstance(values, list) or not values:
+            for alias in _TALENT_TABLE_ALIASES.get(self.name, {}).get(
+                (kind, name),
+                (),
+            ):
+                values = self.talent_data.get(kind, {}).get(alias)
+                if isinstance(values, list) and values:
+                    break
         if not isinstance(values, list) or not values:
             raise KeyError(f"missing talent table: {kind}.{name}")
         level = max(1, min(self.talent_levels.get(kind, 1), len(values)))

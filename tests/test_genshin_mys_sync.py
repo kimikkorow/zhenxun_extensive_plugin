@@ -179,7 +179,11 @@ def _detail_data() -> dict:
                         "set": {"name": "炽烈的炎之魔女"},
                         "main_property": {"property_type": 2, "value": "4780"},
                         "sub_property_list": [
-                            {"property_type": 20, "value": "10.5%"},
+                            {
+                                "property_type": 20,
+                                "value": "10.5%",
+                                "times": 2,
+                            },
                         ],
                     }
                 ],
@@ -231,7 +235,19 @@ def test_convert_character_detail_matches_panel_schema() -> None:
         "https://act-upload.mihoyo.com/UI_RelicIcon_15006_4.png"
     )
     assert role["圣遗物"][0]["主属性"] == {"属性名": "生命值", "属性值": 4780}
-    assert role["圣遗物"][0]["词条"] == [{"属性名": "暴击率", "属性值": 10.5}]
+    assert role["圣遗物"][0]["词条"] == [
+        {"属性名": "暴击率", "属性值": 10.5, "强化次数": 2}
+    ]
+
+
+@pytest.mark.parametrize("times", [0, 5])
+def test_convert_artifact_preserves_miao_upgrade_count_boundaries(times: int) -> None:
+    substat = mys_sync._convert_artifact_substat(
+        {"property_type": 20, "value": "10.5%", "times": times},
+        {},
+    )
+
+    assert substat["强化次数"] == times
 
 
 def test_convert_mona_skips_alternate_sprint_talent() -> None:

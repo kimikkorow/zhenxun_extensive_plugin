@@ -9,7 +9,12 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable
 
-from .sr_miao_models import DamageAttributes, DamageContext, DamageResult
+from .sr_miao_models import (
+    DamageAttributes,
+    DamageContext,
+    DamageResult,
+    DamageValues,
+)
 
 
 def format_miao_number(value: float) -> str:
@@ -2266,7 +2271,11 @@ def calculate_rule_snapshot(name: str, profile: dict[str, Any], enemy_level: int
         direct = raw_result.get("dmg") if isinstance(raw_result, dict) else raw_result.dmg if raw_result.crit is not None else None
         if avg is None and direct is None:
             continue
-        values = [_format_rule_value(avg if avg is not None else direct)]
+        is_text = (
+            isinstance(raw_result, dict) and raw_result.get("type") == "text"
+        ) or (isinstance(raw_result, DamageResult) and raw_result.text is not None)
+        value = _format_rule_value(avg if avg is not None else direct)
+        values = DamageValues([value], is_text=True) if is_text else [value]
         if direct is not None:
             values.append(_format_rule_value(direct))
         title = _resolve_callback(detail.get("title", ""), detail_context)

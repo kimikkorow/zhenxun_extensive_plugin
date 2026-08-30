@@ -233,7 +233,7 @@ class PlayerInfo:
             suit_4, suit_2 = get_artifact_suit([item.get("所属套装", "") for item in artifacts])
             relic_suit_prop = []
             if suit_2 + suit_4:
-                for suit in suit_2 + suit_4:
+                for suit in dict.fromkeys(suit_2 + suit_4):
                     for key, val in equipments_json["Suits"][str(suit)]["SetBonusProps"].items():
                         suit_prop = {
                             "属性名": locs.get(property_json.get(str(key))["Name"]),

@@ -1,5 +1,8 @@
 from PIL import Image, ImageDraw
 
+from zhenxun.services.log import logger
+
+from ...plugin_utils.download_utils import DownloadError
 from .draw_role_card import weapon_url
 from ..utils.card_utils import (
     avatar_path,
@@ -98,12 +101,24 @@ async def draw_role_pic(uid: str, role_dict: dict | list, player_info):
 
         # 角色图
         role_bg = f"{avatar_path}/{data['角色ID']}.png"
-        role_bg = await get_img(url=role_url.format(data["角色ID"]), save_path=role_bg, mode="RGBA")
+        try:
+            role_bg = await get_img(
+                url=role_url.format(data["角色ID"]),
+                save_path=role_bg,
+                mode="RGBA",
+            )
+        except (DownloadError, OSError, ValueError) as exc:
+            logger.warning(
+                f"星铁更新图角色头像下载失败，跳过头像绘制: uid={uid}, "
+                f"role={role}, role_id={data['角色ID']}, error={exc}"
+            )
+            role_bg = None
 
-        card_bg.alpha_composite(
-            role_bg.resize((card_size[0], card_size[0]), Image.Resampling.LANCZOS),
-            (0, 38 * multiple if top_name else 0),
-        )
+        if role_bg is not None:
+            card_bg.alpha_composite(
+                role_bg.resize((card_size[0], card_size[0]), Image.Resampling.LANCZOS),
+                (0, 38 * multiple if top_name else 0),
+            )
 
         # 角色卡内部角色名
         draw_center_text(

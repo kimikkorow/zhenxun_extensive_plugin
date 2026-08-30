@@ -3,7 +3,12 @@ import math
 
 from PIL import Image, ImageDraw
 
-from ..utils.artifact_utils import check_effective, get_artifact_score, get_effective
+from ..utils.artifact_utils import (
+    check_effective,
+    get_artifact_score,
+    get_effective,
+    get_upgrade_count_mark,
+)
 from ..utils.card_utils import (
     bg_path,
     char_pic_path,
@@ -18,7 +23,13 @@ from ..utils.card_utils import (
     weapon_path,
     get_artifact_suit,
 )
-from ..utils.image_utils import draw_center_text, draw_right_text, get_img, load_image
+from ..utils.image_utils import (
+    draw_center_text,
+    draw_right_text,
+    draw_text_with_safe_advance,
+    get_img,
+    load_image,
+)
 from .damage_cal import get_role_dmg
 from .damage_render import draw_dmg_pic
 
@@ -101,8 +112,12 @@ async def draw_role_card(uid, data, player_info, plugin_version, only_cal):
         bg_draw.text(
             (131, 40), f"UID{uid}", fill="white", font=get_font(48, "number.ttf")
         )
-        bg_draw.text(
-            (134, 90), data["名称"], fill="white", font=get_font(72, "优设标题黑.ttf")
+        draw_text_with_safe_advance(
+            bg_draw,
+            (134, 90),
+            data["名称"],
+            fill="white",
+            font=get_font(72, "优设标题黑.ttf"),
         )
 
         level_mask = load_image(path=f"{other_path}/等级遮罩.png")
@@ -426,19 +441,8 @@ async def draw_role_card(uid, data, player_info, plugin_version, only_cal):
                 )
         for j in range(len(artifact["词条"])):
             text = artifact["词条"][j]["属性名"].replace("百分比", "")
-            up_num = ""
-            if mark[j] > 0:
-                up_num = (
-                    "¹"
-                    if mark[j] == 1
-                    else "²"
-                    if mark[j] == 2
-                    else "³"
-                    if mark[j] == 3
-                    else "⁴"
-                    if mark[j] == 4
-                    else "⁵"
-                )
+            up_num = get_upgrade_count_mark(mark[j])
+            if up_num:
                 x_offset = 25 * len(text)
                 bg_draw.text(
                     (94 + 317 * offset_x + x_offset, 1163 + offset_y + 50 * j - 5),
@@ -696,14 +700,31 @@ async def draw_role_card(uid, data, player_info, plugin_version, only_cal):
         weight_name = "通用"
     else:
         weight_name = weight_name[-2:]
+    weight_text = f"{weight_name}:{effect}"
+    weight_font_size = 30
+    weight_font = get_font(weight_font_size)
+    max_weight_width = 1020
+    weight_width = bg_draw.textlength(weight_text, font=weight_font)
+    if weight_width > max_weight_width:
+        weight_font_size = max(
+            1, math.floor(weight_font_size * max_weight_width / weight_width)
+        )
+        weight_font = get_font(weight_font_size)
+        while (
+            weight_font_size > 1
+            and bg_draw.textlength(weight_text, font=weight_font) > max_weight_width
+        ):
+            weight_font_size -= 1
+            weight_font = get_font(weight_font_size)
+
     draw_center_text(
         bg_draw,
-        f"{weight_name}:{effect}",
+        weight_text,
         0,
         1080,
         bg.size[1] - 85,
         "#afafaf",
-        get_font(30),
+        weight_font,
     )
     date = data["更新时间"]  # re.sub("\d{4}-", "", data["更新时间"])
     draw_center_text(

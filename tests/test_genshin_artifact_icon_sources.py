@@ -26,6 +26,29 @@ def _load_backfill():
     return namespace["backfill_artifact_icon_sources"]
 
 
+def _load_substat_upgrade_counter():
+    tree = ast.parse(MODULE_PATH.read_text(encoding="utf-8"))
+    nodes = [
+        node
+        for node in tree.body
+        if (
+            isinstance(node, ast.Assign)
+            and any(
+                isinstance(target, ast.Name)
+                and target.id == "artifact_substat_id_props"
+                for target in node.targets
+            )
+        )
+        or (
+            isinstance(node, ast.FunctionDef)
+            and node.name == "get_artifact_substat_upgrades"
+        )
+    ]
+    namespace = {}
+    exec(compile(ast.Module(nodes, type_ignores=[]), MODULE_PATH, "exec"), namespace)
+    return namespace["get_artifact_substat_upgrades"]
+
+
 def _load_icon_url():
     tree = ast.parse(ROLE_CARD_PATH.read_text(encoding="utf-8"))
     nodes = [
@@ -97,6 +120,18 @@ def test_preserves_existing_artifact_icon_source() -> None:
         data["圣遗物列表"][0][0]["图标链接"]
         == "https://old.example/hash.png"
     )
+
+
+def test_counts_enka_substat_roll_ids_like_miao() -> None:
+    count_upgrades = _load_substat_upgrade_counter()
+
+    assert count_upgrades(
+        [501201, 501204, 501221, 501222, 501223, 501231, "invalid"]
+    ) == {
+        "暴击率": 1,
+        "暴击伤害": 2,
+        "元素充能效率": 0,
+    }
 
 
 def test_uses_canonical_enka_icon_for_unmapped_mys_hash() -> None:

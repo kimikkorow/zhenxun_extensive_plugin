@@ -15,6 +15,7 @@ import re
 from functools import lru_cache
 from typing import Any, Iterable, Mapping
 
+from .sr_miao_models import DamageValues
 from .sr_miao_runtime import calculate_rule_snapshot, load_rule_snapshot
 
 
@@ -579,7 +580,7 @@ def get_role_dmg_status(data: Mapping[str, object]) -> dict[str, Any]:
             return {"status": "rule_failed", "name": rule_name, "revision": snapshot.get("revision", MIAO_REVISION), "error": "规则伤害结果结构错误"}
         if not all(isinstance(value, str) and value for value in values):
             return {"status": "rule_failed", "name": rule_name, "revision": snapshot.get("revision", MIAO_REVISION), "error": "规则伤害结果包含非法数值"}
-        damage[title] = tuple(values)
+        damage[title] = values if isinstance(values, DamageValues) else tuple(values)
     return {
         "status": "success",
         "name": rule_name,

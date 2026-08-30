@@ -20,6 +20,13 @@ MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
 
 
+class _TextValues(tuple):
+    def __new__(cls, values):
+        instance = super().__new__(cls, values)
+        instance.is_text = True
+        return instance
+
+
 def role_data(score: float) -> dict:
     return {
         "评分": score,
@@ -53,6 +60,12 @@ def test_select_damage_metric_uses_requested_one_based_row() -> None:
     assert MODULE.select_damage_metric(damage, 2) == ("治疗量", 999999.0, None)
     assert MODULE.select_damage_metric(damage, 3) == ("血梅香", 45678.0, 90000.0)
     assert MODULE.select_damage_metric(damage, 4) is None
+
+
+def test_select_damage_metric_ignores_marked_text_rows() -> None:
+    damage = {"说明": _TextValues(("11.7%",))}
+
+    assert MODULE.select_damage_metric(damage, 1) is None
 
 
 def test_collect_score_rank_filters_sorts_and_limits(tmp_path: Path) -> None:
@@ -170,6 +183,7 @@ def test_role_rank_card_renders_four_by_four_layout(
 
     image_utils.load_image = load_image
     image_utils.draw_center_text = draw_center_text
+    image_utils.draw_center_text_with_safe_advance = draw_center_text
     image_utils.draw_right_text = draw_right_text
 
     async def get_img(**kwargs):

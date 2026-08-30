@@ -224,6 +224,8 @@ class PlayerInfo:
                                 "属性名": trans_data["property"][
                                     relic_sub_value[relic_item["sub_affix_id"]]["affixes"][str(sub_info["affixId"])]["property"]
                                 ],
+                                "强化次数": sub_info.get("cnt", 0),
+                                "档位步数": sub_info.get("step", 0),
                                 "属性值": self.get_sub_relic_value(
                                     relic_sub_value[relic_item["sub_affix_id"]]["id"],
                                     sub_info["affixId"],
@@ -252,14 +254,14 @@ class PlayerInfo:
             if suit_2:
                 for suit in suit_2:
                     relic_prop = relic_sets[suit]["properties"]
-                    for item in relic_prop:
-                        if item:
-                            relic_suit_prop.append(
-                                {
-                                    "属性名": trans_data["property"][item[0]["type"]],
-                                    "属性值": item[0]["value"],
-                                }
-                            )
+                    if relic_prop and relic_prop[0]:
+                        two_piece_prop = relic_prop[0][0]
+                        relic_suit_prop.append(
+                            {
+                                "属性名": trans_data["property"][two_piece_prop["type"]],
+                                "属性值": two_piece_prop["value"],
+                            }
+                        )
 
             self.cal_prop(
                 prop,

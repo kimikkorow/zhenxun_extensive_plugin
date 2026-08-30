@@ -1,6 +1,6 @@
 import copy
 
-from ..utils.artifact_utils import check_effective, get_artifact_score, get_effective
+from ..utils.artifact_utils import check_effective, get_artifact_score, get_effective, get_upgrade_count_mark
 from .draw_artifact_card import draw_artifact_card
 
 
@@ -20,9 +20,7 @@ async def gen_artifact_recommend(title, data, artifact_list, uid, role_name, pos
         artifact_pk_info["主属性"] = {"属性名": artifact["主属性"]["属性名"], "属性值": artifact["主属性"]["属性值"]}
         artifact_pk_info["副属性"] = []
         for j in range(len(artifact["词条"])):
-            up_num = ""
-            if mark[j] != 0:
-                up_num = "¹" if mark[j] == 1 else "²" if mark[j] == 2 else "³" if mark[j] == 3 else "⁴" if mark[j] == 4 else "⁵"
+            up_num = get_upgrade_count_mark(mark[j])
             num = artifact["词条"][j]["属性值"]
             artifact_pk_info["副属性"].append({"属性名": artifact["词条"][j]["属性名"], "属性值": num, "强化次数": up_num, "颜色": "white" if check_effective(artifact["词条"][j]["属性名"], effective) else "#afafaf"})
         if artifact_pk_info not in artifact_all:
