@@ -16,7 +16,6 @@ def _load_update_card(monkeypatch, tmp_path: Path):
         "zhenxun.plugins.starrail_update_preview",
         "zhenxun.plugins.starrail_update_preview.data_source",
         "zhenxun.plugins.starrail_update_preview.utils",
-        "zhenxun.plugins.plugin_utils",
     )
     packages = {}
     for package_name in package_names:
@@ -35,7 +34,9 @@ def _load_update_card(monkeypatch, tmp_path: Path):
     log_module.logger = Logger()
     monkeypatch.setitem(sys.modules, "zhenxun.services.log", log_module)
 
-    download_utils = types.ModuleType("zhenxun.plugins.plugin_utils.download_utils")
+    download_utils = types.ModuleType(
+        "zhenxun.plugins.starrail_update_preview.utils.download_utils"
+    )
 
     class DownloadError(RuntimeError):
         pass
