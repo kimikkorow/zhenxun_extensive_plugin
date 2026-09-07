@@ -1,0 +1,11 @@
+*.pyc
+.*
+genshin_recommend/data
+starrail_recommend/data
+zenlesszonezero_recommend/data
+user_data
+
+# 独立维护的游戏角色面板插件（需单独 clone）
+/genshin_role_info/
+/starrail_role_info/
+/zenlesszonezero_role_info/
