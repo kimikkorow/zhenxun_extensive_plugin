@@ -41,6 +41,32 @@
 
 迁移后的三个插件仍应与本仓库的 `plugin_utils` 保持同级目录。它们可以直接放在同一个 `zhenxun/plugins` 目录中，但需要分别使用各自仓库进行安装和更新。
 
+## 插件列表
+
+以下为仍由本仓库维护的插件；已迁移的三个角色面板插件见上方的独立仓库列表。
+
+- [金币转账](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/gold_trans)
+- [验车](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/whatslink)
+- [星铁攻略](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/starrail_recommend)
+- [绝区零攻略](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/zenlesszonezero_recommend)
+- [网页截图](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/call)
+- [入群检测](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/join_group_check)
+- [Chatgpt](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/chatgpt)
+- [昵称检测](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/nickname_check)
+- [插件管理](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/plugin_manager)
+- [舔狗日记](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/tgrj)
+- [图片打分](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/setu_score)
+- [成语接龙](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/idiom_salon)
+- [24点](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/24_point)
+- [21点](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/21_point)
+- [打工赚金币版](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/work)
+- [原神攻略](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/genshin_recommend)
+- [原神角色卡片](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/genshin_role_card)
+- [扫雷赚金币版](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/minesweeper)
+- [猜成语赚金币版](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/guess_riddle)
+- [发涩图](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/setu)
+- [洛克王国助手](https://github.com/CRAZYShimakaze/zhenxun_extensive_plugin/tree/main/rocom_helper)
+
 ## 安装
 
 ### 安装本仓库
