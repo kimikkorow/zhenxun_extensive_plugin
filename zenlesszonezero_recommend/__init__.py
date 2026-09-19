@@ -53,8 +53,8 @@ check_update = on_command("检查绝区零插件更新", permission=SUPERUSER, p
 
 SRC_URL = "/CRAZYShimakaze/CRAZYShimakaze.github.io/main/zzz/"
 NICKNAME_URL = (
-    "/CRAZYShimakaze/zhenxun_extensive_plugin/main/"
-    "zenlesszonezero_role_info/res/json_data/nickname.json"
+    "/CRAZYShimakaze/zhenxun_plugin_zenlesszonezero_role_info/main/"
+    "res/json_data/nickname.json"
 )
 PLUGIN_URL = (
     "/CRAZYShimakaze/zhenxun_extensive_plugin/main/"

@@ -73,6 +73,10 @@ break_material = on_regex(r"^(.*)(?:素材|材料)$", priority=15)
 
 RAW_BASE = "https://raw.githubusercontent.com"
 SRC_URL = "/CRAZYShimakaze/CRAZYShimakaze.github.io/main/genshin/"
+ROLE_INFO_URL = (
+    "/CRAZYShimakaze/zhenxun_plugin_genshin_role_info/main/"
+    "res/json_data/role_info.json"
+)
 PLUGIN_URL = "/CRAZYShimakaze/zhenxun_extensive_plugin/main/genshin_recommend/"
 
 RES_PATH = Path(__file__).parent / "data"
@@ -101,13 +105,33 @@ def _load_catalog(category: str) -> dict[str, str]:
         return {}
 
 
-def _validated_aliases(data: object) -> dict[str, dict[str, list[str]]]:
+def _validated_aliases(
+    data: object,
+    fallback_weapon_aliases: Mapping[str, list[str]] | None = None,
+) -> dict[str, dict[str, list[str]]]:
     if not isinstance(data, dict):
         raise ValueError("原神别名格式无效")
+
+    if "角色" in data or "武器" in data:
+        values_by_key = {key: data.get(key) for key in ("角色", "武器")}
+    else:
+        role_aliases: dict[str, list[str]] = {}
+        for canonical, role_info in data.items():
+            if not isinstance(canonical, str) or not isinstance(role_info, dict):
+                raise ValueError("原神角色信息格式无效")
+            names = role_info.get("别名", [])
+            if not isinstance(names, list):
+                raise ValueError("原神角色别名包含无效数据")
+            role_aliases[canonical] = [name for name in names if isinstance(name, str)]
+        values_by_key = {
+            "角色": role_aliases,
+            "武器": dict(fallback_weapon_aliases or {}),
+        }
+
     result: dict[str, dict[str, list[str]]] = {}
     for key in ("角色", "武器"):
-        values = data.get(key)
-        if not isinstance(values, dict) or not values:
+        values = values_by_key[key]
+        if not isinstance(values, dict) or (key == "角色" and not values):
             raise ValueError(f"原神别名缺少{key}数据")
         aliases: dict[str, list[str]] = {}
         for canonical, names in values.items():
@@ -115,6 +139,9 @@ def _validated_aliases(data: object) -> dict[str, dict[str, list[str]]]:
                 raise ValueError(f"原神{key}别名包含无效数据")
             aliases[canonical] = [name for name in names if isinstance(name, str)]
         result[key] = aliases
+
+    for canonical in catalogs["weapon_info"]:
+        result["武器"].setdefault(canonical, [])
     return result
 
 
@@ -159,7 +186,7 @@ async def _refresh_remote_state() -> bool:
         fetch_json(f"{RAW_BASE}{SRC_URL}{category}/md5.json")
         for category in CATEGORIES
     ]
-    requests.append(fetch_json(f"{RAW_BASE}{SRC_URL}alias.json"))
+    requests.append(fetch_json(f"{RAW_BASE}{ROLE_INFO_URL}"))
     results = await asyncio.gather(*requests, return_exceptions=True)
 
     refreshed = True
@@ -183,7 +210,10 @@ async def _refresh_remote_state() -> bool:
         refreshed = False
     else:
         try:
-            aliases = _validated_aliases(alias_result)
+            aliases = _validated_aliases(
+                alias_result,
+                alias_data.get("武器", {}),
+            )
         except ValueError as exc:
             logger.warning(str(exc))
             refreshed = False

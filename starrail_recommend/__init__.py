@@ -68,8 +68,8 @@ break_material = on_regex(r"^(.*)(?:素材|材料)$", priority=15)
 RAW_BASE = "https://raw.githubusercontent.com"
 SRC_URL = "/CRAZYShimakaze/CRAZYShimakaze.github.io/main/starrail/"
 NICKNAME_URL = (
-    "/CRAZYShimakaze/zhenxun_extensive_plugin/main/"
-    "starrail_role_info/res/json_data/nickname.json"
+    "/CRAZYShimakaze/zhenxun_plugin_starrail_role_info/main/"
+    "res/json_data/nickname.json"
 )
 PLUGIN_URL = "/CRAZYShimakaze/zhenxun_extensive_plugin/main/starrail_recommend/"
 
