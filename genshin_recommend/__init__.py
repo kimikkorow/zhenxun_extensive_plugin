@@ -223,6 +223,21 @@ async def _refresh_remote_state() -> bool:
     return refreshed
 
 
+async def _refresh_role_guide_catalog() -> bool:
+    try:
+        catalog = validated_md5_catalog(
+            await fetch_json(f"{RAW_BASE}{SRC_URL}role_guide/md5.json"),
+            "role_guide",
+        )
+        atomic_write_json(CATEGORIES["role_guide"].path / "md5.json", catalog)
+    except Exception as exc:
+        logger.warning(f"原神攻略获取role_guide索引失败: {exc}")
+        return False
+
+    catalogs["role_guide"] = catalog
+    return True
+
+
 async def _ensure_state(require_aliases: bool = True) -> bool:
     ready = all(catalogs.values()) and (alias_data or not require_aliases)
     if ready:
@@ -304,8 +319,23 @@ async def _(_: MessageEvent):
 
 @role_guide.handle()
 async def _(event: MessageEvent, args: tuple[str, ...] = RegexGroup()):
-    if await _ensure_state() and (role := _resolve_role(args[0], "role_guide")):
+    if not await _ensure_state():
+        await role_guide.send("攻略资源索引获取失败，请稍后重试。")
+        return
+
+    role = _resolve_role(args[0], "role_guide")
+    refresh_succeeded = True
+    if role is None:
+        async with state_lock:
+            role = _resolve_role(args[0], "role_guide")
+            if role is None:
+                refresh_succeeded = await _refresh_role_guide_catalog()
+                role = _resolve_role(args[0], "role_guide")
+
+    if role:
         await _send_charged_asset(event, role_guide, "role_guide", role)
+    elif not refresh_succeeded:
+        await role_guide.send("攻略索引刷新失败，请稍后重试。")
 
 
 @genshin_info.handle()

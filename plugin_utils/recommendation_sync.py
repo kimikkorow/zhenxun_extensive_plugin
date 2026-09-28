@@ -130,10 +130,14 @@ def resolve_alias(
     aliases: Mapping[str, Iterable[str]],
     available: Iterable[str],
 ) -> str | None:
-    available_names = set(available)
+    available_names = tuple(available)
+    available_name_set = set(available_names)
     normalized_query = normalize_name(query)
+    for canonical in available_names:
+        if normalize_name(canonical) == normalized_query:
+            return canonical
     for canonical, alias_values in aliases.items():
-        if canonical not in available_names:
+        if canonical not in available_name_set:
             continue
         candidates = (canonical, *alias_values)
         if normalized_query in {normalize_name(item) for item in candidates}:

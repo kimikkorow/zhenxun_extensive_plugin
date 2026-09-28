@@ -387,6 +387,41 @@ def test_bind_single_uid_only_overwrites_binding(
     assert calls == [(10001, "123456789")]
 
 
+def test_bind_chosen_uid_from_multiple_roles(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[int, str]] = []
+    monkeypatch.setattr(
+        mys_sync,
+        "overwrite_uid_binding",
+        lambda qq_id, uid: calls.append((qq_id, uid)),
+    )
+
+    result = mys_sync.bind_single_genshin_uid(
+        10001,
+        {
+            "game_roles": {
+                "genshin": [
+                    {
+                        "game_uid": "123456789",
+                        "region": "cn_gf01",
+                        "is_chosen": False,
+                    },
+                    {
+                        "game_uid": "509393355",
+                        "region": "cn_qd01",
+                        "is_chosen": True,
+                    },
+                ]
+            }
+        },
+    )
+
+    assert result.status == "bound"
+    assert result.uid == "509393355"
+    assert calls == [(10001, "509393355")]
+
+
 @pytest.mark.parametrize("roles", [[], [{"game_uid": "1"}, {"game_uid": "2"}]])
 def test_bind_non_single_uid_keeps_existing_binding(
     monkeypatch: pytest.MonkeyPatch,
