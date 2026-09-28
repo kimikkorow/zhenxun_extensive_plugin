@@ -203,6 +203,21 @@ async def _refresh_remote_state() -> bool:
     return refreshed
 
 
+async def _refresh_role_guide_catalog() -> bool:
+    try:
+        catalog = _validated_catalog(
+            await _fetch_json(f"{SRC_URL}role_guide/md5.json"),
+            "role_guide",
+        )
+        _write_json(CATEGORIES["role_guide"]["path"] / "md5.json", catalog)
+    except Exception as exc:
+        logger.warning(f"绝区零攻略获取role_guide索引失败: {exc}")
+        return False
+
+    catalogs["role_guide"] = catalog
+    return True
+
+
 async def _ensure_catalogs() -> bool:
     if all(catalogs.values()):
         return True
@@ -267,9 +282,22 @@ async def _send_charged_asset(
 @role_guide.handle()
 async def _(event: MessageEvent, args: tuple[str, ...] = RegexGroup()):
     if not await _ensure_catalogs():
+        await role_guide.send("攻略资源索引获取失败，请稍后重试。")
         return
-    if role := _resolve_role(args[0], "role_guide"):
+
+    role = _resolve_role(args[0], "role_guide")
+    refresh_succeeded = True
+    if role is None:
+        async with catalog_lock:
+            role = _resolve_role(args[0], "role_guide")
+            if role is None:
+                refresh_succeeded = await _refresh_role_guide_catalog()
+                role = _resolve_role(args[0], "role_guide")
+
+    if role:
         await _send_charged_asset(event, role_guide, "role_guide", role)
+    elif not refresh_succeeded:
+        await role_guide.send("攻略索引刷新失败，请稍后重试。")
 
 
 @break_material.handle()

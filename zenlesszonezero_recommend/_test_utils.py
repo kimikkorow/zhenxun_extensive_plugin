@@ -15,6 +15,9 @@ class ResolveNameTests(unittest.TestCase):
         self.assertEqual(resolve_name("柳", ["月城柳"], aliases), "月城柳")
         self.assertEqual(resolve_name("鬼火", ["奥菲丝"], aliases), "奥菲丝")
 
+    def test_resolves_canonical_name_without_alias_entry(self):
+        self.assertEqual(resolve_name("安比", ["安比"], {}), "安比")
+
     def test_rejects_unknown_name(self):
         self.assertIsNone(resolve_name("不存在", ["安比"]))
 
